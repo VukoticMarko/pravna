@@ -33,6 +33,13 @@
 	        <artifactId>spring-boot-starter-web</artifactId>
 	        <version>2.5.6</version> <!-- Make sure to use the version compatible with your Spring Boot version -->
    		</dependency>
+
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.6</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>

@@ -21,7 +21,15 @@ public class LawController {
 
     @GetMapping("/load")
     public String loadLaw(@RequestParam String path) {
-
-        return lawService.loadLawDocument(path);
+        if ("laws/clan412.xml".equals(path)) {
+            String doc = lawService.loadLaw412Document(path);
+            return doc;
+        } else if("laws/clan413.xml".equals(path)) {
+            String doc = lawService.loadLaw413Document(path);
+            return doc;
+        }
+        else {
+            return "Document not found or error loading document";
+        }
     }
 }
