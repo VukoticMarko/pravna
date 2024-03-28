@@ -66,7 +66,7 @@ public class LawService {
             Document xmlDocument = dBuilder.parse(inputStream);
             inputStream.close();
             StringBuilder lawText = new StringBuilder();
-            
+
             String articleNumber = xmlDocument.getElementsByTagName("num").item(0).getTextContent().trim();
             String title = xmlDocument.getElementsByTagName("heading").item(0).getTextContent().trim();
             lawText.append(title).append("\n\nČlan ").append(articleNumber).append("\n\n");
