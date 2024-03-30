@@ -13,17 +13,17 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
@@ -195,24 +195,33 @@ public class DocumentService {
     public List<String> getMetadata(String file) throws IOException {
         String verdict_text = getText(file);
         List<String> metadata = new ArrayList<>();
-        String fileName = new File(file).getName(); // Use getName() to get only the filename
-        metadata.add(fileName.split("\\.")[0]);
-        int file_path_size = file.split("/").length;
-        metadata.add(file.split("/")[file_path_size - 1].split("\\.")[0]);
+
+        String fileNameWithExtension = new File(file).getName();
+        String fileNameOnly = fileNameWithExtension.substring(0, fileNameWithExtension.lastIndexOf('.'));
+        metadata.add(fileNameOnly);
+
         metadata.add(getJudge(verdict_text));
         metadata.add(getClerk(verdict_text));
         metadata.add(getDefendantInitials(verdict_text));
+
+        metadata = metadata.stream()
+                .map(data -> data.replaceAll("\\r?\\n", " "))
+                .collect(Collectors.toList());
+
         metadata.add(getSud(verdict_text));
         metadata.add(getVerdict(verdict_text));
-        List<String> res = getFelony(verdict_text);
-        if (!res.isEmpty())
-            metadata.add(res.get(0));
+
+        List<String> felonies = getFelony(verdict_text);
+        if (!felonies.isEmpty()) {
+            metadata.addAll(felonies);
+        }
+
         System.out.println(metadata);
         return metadata;
     }
 
 
-    public void run() {
+    public void generateMetadata() {
         Path dirPath = Paths.get("src/main/resources/judgements_pdf"); // Path to the directory containing PDFs
 
         // Try-with-resources statement to ensure FileWriter and Stream<Path> are closed automatically
@@ -236,5 +245,76 @@ public class DocumentService {
             // Handle exceptions, possibly logging them or notifying the user
             e.printStackTrace();
         }
+    }
+
+    public void generateXMLfromMetadata() {
+        String inputFile = "metadata.txt"; // Your metadata file path
+        Path outputDirectory = Paths.get("Z:\\Faks\\Pravna Informatika\\pravna\\backend\\src\\main\\resources\\judgements_xml");
+        //Path outputDirectory = Paths.get("/src/main/resources/judgements_xml/"); // Output directory for XML files
+        if (!Files.exists(outputDirectory)) {
+            try {
+                Files.createDirectories(outputDirectory);
+                System.out.println("Created new folder for xml's.");
+            } catch (IOException e) {
+                e.printStackTrace();
+                return; // Directory creation failed, exit the method
+            }
+        }
+        try (BufferedReader br = new BufferedReader(new FileReader(inputFile))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] metadata = line.split(";");
+                if (metadata.length < 3) {
+                    System.out.println("Skipping line due to incorrect format: " + line);
+                    continue;
+                }
+                Path filePath = Paths.get(metadata[0]);
+                String fileNameOnly = filePath.getFileName().toString();
+                String xmlFileName = fileNameOnly + ".xml";
+                String xmlContent = generateXmlContent(metadata);
+                Path xmlFilePath = outputDirectory.resolve(xmlFileName);
+                Files.write(xmlFilePath, xmlContent.getBytes());
+                try {
+                    // Write XML content to file
+                    Path writtenFilePath = Files.write(xmlFilePath, xmlContent.getBytes(), StandardOpenOption.CREATE);
+                    System.out.println("Written file path: " + writtenFilePath.toAbsolutePath());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    System.out.println("Failed to write XML file: " + xmlFilePath);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String generateXmlContent(String[] metadata) {
+        try{
+            return String.format("<akomaNtoso xmlns=\"http://docs.oasis-open.org/legaldocml/ns/akn/3.0\" "
+                            + "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
+                            + "<judgement>"
+                            + "<meta>"
+                            + "<identification source=\"#court\">"
+                            + "<FRBRWork>"
+                            + "<FRBRauthor>%s</FRBRauthor>"
+                            + "<FRBRdate date=\"%s\">%s</FRBRdate>"
+                            + "<FRBRtitle>%s</FRBRtitle>"
+                            + "<FRBRcountry>CG</FRBRcountry>"
+                            + "</FRBRWork>"
+                            + "</identification>"
+                            // ... Add more elements based on your metadata and XML structure
+                            + "</judgement></akomaNtoso>",
+                    metadata[1], // Author
+                    metadata[2], // Date
+                    metadata[2], // Date repeated
+                    metadata[0]  // Title (case number)
+
+            );
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            System.out.println("Wrong format in line! Skipping line...");
+        }
+        return "Faulty metadata.";
     }
 }

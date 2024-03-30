@@ -27,9 +27,11 @@ public class DocumentController {
         return "";
     }
 
-    @GetMapping("/generate-metadata")
-    public void generateMetadata() {
-        documentService.run();
+    @GetMapping("/generate-xml")
+    public void generateMetadataAndXML() {
+        documentService.generateMetadata();
         System.out.println("Successfully generated metadata.txt!");
+        documentService.generateXMLfromMetadata();
+        System.out.println("Successfully generated xml from metadata.txt!");
     }
 }
