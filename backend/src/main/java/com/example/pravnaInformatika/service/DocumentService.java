@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -263,7 +264,7 @@ public class DocumentService {
         try (BufferedReader br = new BufferedReader(new FileReader(inputFile))) {
             String line;
             while ((line = br.readLine()) != null) {
-                String[] metadata = line.split(";");
+                String[] metadata = line.split(";", 6);
                 if (metadata.length < 3) {
                     System.out.println("Skipping line due to incorrect format: " + line);
                     continue;
@@ -289,32 +290,47 @@ public class DocumentService {
     }
 
     private String generateXmlContent(String[] metadata) {
-        try{
-            return String.format("<akomaNtoso xmlns=\"http://docs.oasis-open.org/legaldocml/ns/akn/3.0\" "
-                            + "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
-                            + "<judgement>"
-                            + "<meta>"
-                            + "<identification source=\"#court\">"
-                            + "<FRBRWork>"
-                            + "<FRBRauthor>%s</FRBRauthor>"
-                            + "<FRBRdate date=\"%s\">%s</FRBRdate>"
-                            + "<FRBRtitle>%s</FRBRtitle>"
-                            + "<FRBRcountry>CG</FRBRcountry>"
-                            + "</FRBRWork>"
-                            + "</identification>"
-                            // ... Add more elements based on your metadata and XML structure
-                            + "</judgement></akomaNtoso>",
-                    metadata[1], // Author
-                    metadata[2], // Date
-                    metadata[2], // Date repeated
-                    metadata[0]  // Title (case number)
 
-            );
-        }
-        catch (Exception e){
-            e.printStackTrace();
-            System.out.println("Wrong format in line! Skipping line...");
-        }
-        return "Faulty metadata.";
+        String title = metadata[0]; // Case number
+        String author = metadata[1]; // Author, e.g., Judge's name
+        String date = "DATE_HERE";
+        //
+        String court = metadata[4]; // Court name
+
+        String verdict = String.join(";", Arrays.copyOfRange(metadata, 5, metadata.length));
+
+        // XML Generate
+        String xmlContent = String.format(
+                "<akomaNtoso xmlns=\"http://docs.oasis-open.org/legaldocml/ns/akn/3.0\" " +
+                        "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n" +
+                        "    <judgement>\n" +
+                        "        <meta>\n" +
+                        "            <identification source=\"#court\">\n" +
+                        "                <FRBRWork>\n" +
+                        "                    <FRBRauthor>%s</FRBRauthor>\n" +
+                        "                    <FRBRdate date=\"%s\">%s</FRBRdate>\n" +
+                        "                    <FRBRtitle>%s</FRBRtitle>\n" +
+                        "                    <FRBRcountry>CG</FRBRcountry>\n" +
+                        "                </FRBRWork>\n" +
+                        "            </identification>\n" +
+                        "        </meta>\n" +
+                        "        <mainBody>\n" +
+                        "            <verdict>%s</verdict>\n" +
+                        "        </mainBody>\n" +
+                        "    </judgement>\n" +
+                        "</akomaNtoso>",
+                author, date, date, title, verdict
+        );
+
+        return xmlContent;
+    }
+
+    // Escape XML special characters
+    private String escapeXml(String input) {
+        return input.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
     }
 }
